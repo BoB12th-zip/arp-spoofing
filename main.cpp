@@ -1,4 +1,33 @@
 #include "main.h"
+EthArpPacket packet;
+
+void send_arp(int mode, pcap_t *handle, Mac ether_dmac, Mac ether_smac, 
+			 Mac arp_smac, Ip arp_sip, Mac arp_tmac, Ip arp_tip)
+{
+	// EthArpPacket packet;
+
+	packet.eth_.dmac_ = ether_dmac;
+	packet.eth_.smac_ = ether_smac;
+	packet.eth_.type_ = htons(EthHdr::Arp);
+	
+	packet.arp_.hrd_ = htons(ArpHdr::ETHER);
+	packet.arp_.pro_ = htons(EthHdr::Ip4);
+
+	packet.arp_.op_ = htons(mode);
+
+	packet.arp_.hln_ = Mac::SIZE;
+	packet.arp_.pln_ = Ip::SIZE;
+
+	packet.arp_.smac_ = Mac(arp_smac);
+	packet.arp_.sip_ = htonl(Ip(arp_sip));
+	packet.arp_.tmac_ = Mac(arp_tmac);
+	packet.arp_.tip_ = htonl(Ip(arp_tip));
+
+	int res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&packet), sizeof(EthArpPacket));
+	if (res != 0) {
+		fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res, pcap_geterr(handle));
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -46,28 +75,31 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
 			return -1;
 		}
-		EthArpPacket packet;
+		// EthArpPacket packet;
+		send_arp(ArpHdr::Request, handle, Mac("ff:ff:ff:ff:ff:ff"), Mac(src_mac),
+		 Mac(src_mac), Ip(src_ip), Mac("00:00:00:00:00:00"), Ip(argv[iter]));
+		
 
-		packet.eth_.dmac_ = Mac("ff:ff:ff:ff:ff:ff");
-		packet.eth_.smac_ = Mac(src_mac);
-		packet.eth_.type_ = htons(EthHdr::Arp);
+		// packet.eth_.dmac_ = Mac("ff:ff:ff:ff:ff:ff");
+		// packet.eth_.smac_ = Mac(src_mac);
+		// packet.eth_.type_ = htons(EthHdr::Arp);
 
-		packet.arp_.hrd_ = htons(ArpHdr::ETHER);
-		packet.arp_.pro_ = htons(EthHdr::Ip4);
-		packet.arp_.op_ = htons(ArpHdr::Request);
-		packet.arp_.hln_ = Mac::SIZE;
-		packet.arp_.pln_ = Ip::SIZE;
-		packet.arp_.smac_ = Mac(src_mac);
-		packet.arp_.sip_ = htonl(Ip(src_ip));
-		packet.arp_.tmac_ = Mac("00:00:00:00:00:00");
-		packet.arp_.tip_ = htonl(Ip(argv[iter]));
+		// packet.arp_.hrd_ = htons(ArpHdr::ETHER);
+		// packet.arp_.pro_ = htons(EthHdr::Ip4);
+		// packet.arp_.op_ = htons(ArpHdr::Request);
+		// packet.arp_.hln_ = Mac::SIZE;
+		// packet.arp_.pln_ = Ip::SIZE;
+		// packet.arp_.smac_ = Mac(src_mac);
+		// packet.arp_.sip_ = htonl(Ip(src_ip));
+		// packet.arp_.tmac_ = Mac("00:00:00:00:00:00");
+		// packet.arp_.tip_ = htonl(Ip(argv[iter]));
 
-		int res1 = pcap_sendpacket(handle, reinterpret_cast<const u_char *>(&packet), sizeof(EthArpPacket));
+		// int res1 = pcap_sendpacket(handle, reinterpret_cast<const u_char *>(&packet), sizeof(EthArpPacket));
 
-		if (res1 != 0)
-		{
-			fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res1, pcap_geterr(handle));
-		}
+		// if (res1 != 0)
+		// {
+		// 	fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res1, pcap_geterr(handle));
+		// }
 		char dst_mac[ETH_ALEN];
 
 		// Receiving reply packet and extract victim's MAC address

@@ -1,6 +1,6 @@
-#include "getAddress.h"
+#include "getHostInfo.h"
 
-int getMACAddress(const char *interfaceName, unsigned char *macAddress)
+int getHostMac(const char *interfaceName, unsigned char *macAddress)
 {
 	int sockfd;
 	struct ifreq ifr;
@@ -33,7 +33,7 @@ int getMACAddress(const char *interfaceName, unsigned char *macAddress)
 }
 
 
-int getIPAddress(const char *interfaceName, char *ipAddress)
+int getHostIp(const char *interfaceName, char *ipAddress)
 {
 	int sockfd;
 	struct ifreq ifr;

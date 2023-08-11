@@ -4,6 +4,7 @@
 #include "getHostInfo.cpp"
 #include "ethhdr.h"
 #include "arphdr.h"
+#include "iphdr.h"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>

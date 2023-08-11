@@ -32,7 +32,6 @@ int getHostMac(const char *interfaceName, unsigned char *macAddress)
 	return 0;
 }
 
-
 int getHostIp(const char *interfaceName, char *ipAddress)
 {
 	int sockfd;
@@ -65,4 +64,27 @@ int getHostIp(const char *interfaceName, char *ipAddress)
 
 	close(sockfd);
 	return 0;
+}
+void getHostInfo(const char *interfaceName, unsigned char* att_mac, char* att_ip)
+{
+	printf("[*] Get host info..\n\n");
+	if (getHostMac(interfaceName, att_mac) == 0)
+	{
+		printf("attacker MAC : %02X:%02X:%02X:%02X:%02X:%02X\n",
+			   att_mac[0], att_mac[1], att_mac[2],
+			   att_mac[3], att_mac[4], att_mac[5]);
+	}
+	else
+	{
+		printf("Failed to get MAC Address.\n");
+	}
+
+	if (getHostIp(interfaceName, att_ip) == 0)
+	{
+		printf("attacker IP : %s\n", att_ip);
+	}
+	else
+	{
+		printf("Failed to get IP address.\n");
+	}
 }

@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <iostream>
 #include <pcap.h>
 #include "getHostInfo.cpp"
 #include "ethhdr.h"
@@ -20,6 +21,6 @@ struct EthArpPacket final
 
 void usage()
 {
-	printf("syntax : send-arp <interface> <sender ip> <target ip> [<sender ip 2> <target ip 2> ...]\n");
-	printf("sample : send-arp wlan0 192.168.10.2 192.168.10.1\n");
+	printf("syntax : arp-spoof <interface> <sender ip> <target ip> [<sender ip 2> <target ip 2> ...]\n");
+	printf("sample : arp-spoof wlan0 192.168.10.2 192.168.10.1\n");
 }

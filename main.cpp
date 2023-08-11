@@ -27,7 +27,7 @@ void relayIpPacket(pcap_t *handle, Ip send_ip, Mac att_mac)
 		if (ntohl((ip->ip_.sip_)) == send_ip && 
 		ip->eth_.dmac_ == att_mac)
 		{
-			printf("[*] Ip packet captured..\n");
+			printf("[*] Spoofed ip packet captured..\n");
 			printf("src ip : %s...\n", std::string(Ip(ntohl(ip->ip_.sip_))).data());
 			printf("src mac : %s...\n", std::string(ip->eth_.smac_).data());
 			printf("dst ip : %s...\n", std::string(Ip(ntohl(ip->ip_.dip_))).data());

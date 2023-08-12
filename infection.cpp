@@ -30,7 +30,7 @@ void sendArp(int mode, pcap_t *handle, Mac ether_dmac, Mac ether_smac,
 	else
 	{
 		printf("\n\n------------------------------\n");
-		printf("[*] Infecting packet sending succeeded!");
+		printf("[*] Arp packet sending succeeded!");
 		printf("\n------------------------------\n\n");
 	}
 }
@@ -73,6 +73,7 @@ EthArpPacket* receiveArp(int mode, pcap_t *handle)
 
 void getSenderMac(pcap_t *handle, Mac src_mac, Ip src_ip, char *dst_mac, Ip arp_tip)
 {
+	printf("[*] Infection..\n");
 	sendArp(ArpHdr::Request, handle, Mac("FF:FF:FF:FF:FF:FF"), Mac(src_mac),
 			Mac(src_mac), Ip(src_ip), Mac("00:00:00:00:00:00"), Ip(arp_tip));
 

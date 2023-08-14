@@ -42,6 +42,7 @@ struct FlowInfo final
 	Ip attackerIp = Ip();
 	Ip senderIp = Ip();
 	Ip targetIp = Ip();
+
 	Mac attackerMac = Mac::nullMac();
 	Mac senderMac = Mac::nullMac();
 	Mac targetMac = Mac::nullMac();
@@ -52,4 +53,6 @@ struct FlowInfo final
 void sendArp(pcap_t *, EthArpPacket );
 void continueSendArp(pcap_t *, EthArpPacket , int );
 Mac getMac(pcap_t* , Ip , Mac , Ip );
-bool isRefreshed(pcap_t* , EthArpPacket);
+bool isRefreshed(pcap_t* , const u_char *, FlowInfo);
+void spoofProcess(int , pcap_t *, EthArpPacket, FlowInfo);
+void relayPacket();

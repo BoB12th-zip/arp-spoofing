@@ -3,6 +3,7 @@
 #include "getHostInfo.h"
 #include "ethhdr.h"
 #include "arphdr.h"
+#include "iphdr.h"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -37,6 +38,14 @@ struct EthArpPacket final
 #pragma pack(pop)
 
 #pragma pack(push, 1)
+struct EthIpPacket final
+{
+	EthHdr eth_;
+	IpHdr ip_;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
 struct FlowInfo final
 {
 	Ip attackerIp = Ip();
@@ -55,4 +64,4 @@ void continueSendArp(pcap_t *, EthArpPacket , int );
 Mac getMac(pcap_t* , Ip , Mac , Ip );
 bool isRefreshed(pcap_t* , const u_char *, FlowInfo);
 void spoofProcess(int , pcap_t *, EthArpPacket, FlowInfo);
-void relayPacket();
+void relayPacket(pcap_t *, const u_char *, FlowInfo);

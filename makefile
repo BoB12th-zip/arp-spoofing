@@ -13,7 +13,11 @@ ip.o: ip.h ip.cpp
 
 mac.o : mac.h mac.cpp
 
-arp-spoof: main.o arphdr.o ethhdr.o ip.o mac.o
+getHostInfo.o : getHostInfo.h getHostInfo.cpp
+
+spoof.o : spoof.h spoof.cpp
+
+arp-spoof: main.o arphdr.o ethhdr.o ip.o mac.o getHostInfo.o spoof.o
 	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 clean:

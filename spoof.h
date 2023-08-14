@@ -37,5 +37,5 @@ struct EthArpPacket final
 #pragma pack(pop)
 
 void sendArp(pcap_t *handle, EthArpPacket pkt);
-void sendArpThread(pcap_t *handle, EthArpPacket pkt, int repeat);
+void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat);
 Mac getMac(pcap_t* handle, Ip attackerIp, Mac attackerMac, Ip ip);

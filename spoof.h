@@ -36,6 +36,20 @@ struct EthArpPacket final
 };
 #pragma pack(pop)
 
-void sendArp(pcap_t *handle, EthArpPacket pkt);
-void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat);
-Mac getMac(pcap_t* handle, Ip attackerIp, Mac attackerMac, Ip ip);
+#pragma pack(push, 1)
+struct FlowInfo final
+{
+	Ip attackerIp = Ip();
+	Ip senderIp = Ip();
+	Ip targetIp = Ip();
+	Mac attackerMac = Mac::nullMac();
+	Mac senderMac = Mac::nullMac();
+	Mac targetMac = Mac::nullMac();
+};
+#pragma pack(pop)
+
+
+void sendArp(pcap_t *, EthArpPacket );
+void continueSendArp(pcap_t *, EthArpPacket , int );
+Mac getMac(pcap_t* , Ip , Mac , Ip );
+bool isRefreshed(pcap_t* , EthArpPacket);

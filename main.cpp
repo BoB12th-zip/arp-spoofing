@@ -16,8 +16,8 @@ void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt)
 			break;
 		}
 
-		// if (/*Reinfection function*/true)
-		// sendArp(handle, pkt);
+		if (isRefreshed(handle, pkt))
+			sendArp(handle, pkt);
 		// else
 		/*relay function*/
 	}
@@ -27,6 +27,8 @@ void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt)
 
 int main(int argc, char *argv[])
 {
+	FlowInfo flow;
+
 	// parameter check
 	if (argc < 4 || (argc % 2) != 0)
 	{

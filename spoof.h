@@ -65,3 +65,4 @@ Mac getMac(pcap_t* , Ip , Mac , Ip );
 bool isRefreshed(pcap_t* , const u_char *, FlowInfo);
 void spoofProcess(int , pcap_t *, EthArpPacket, FlowInfo);
 void relayPacket(pcap_t *, const u_char *, FlowInfo);
+bool isInfectedPkt(pcap_t *, const u_char *, FlowInfo);

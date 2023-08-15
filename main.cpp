@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 		printf("\n----------------------------------------\n");
 
 		flow.targetIp = Ip(argv[iter + 1]);
-		Mac targetMac = getMac(handle, flow.attackerIp, flow.attackerMac, flow.targetIp);
+		flow.targetMac = getMac(handle, flow.attackerIp, flow.attackerMac, flow.targetIp);
 		printf("[+] targetIp    : %s\n", std::string(flow.targetIp).c_str());
 		printf("[+] targetMac   : %s\n", std::string(flow.targetMac).c_str());
 

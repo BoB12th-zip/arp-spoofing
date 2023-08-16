@@ -55,19 +55,20 @@ int main(int argc, char *argv[])
 
 		flowList.push_back(flow);
 	}
+
+	std::vector<std::thread> spoofThreads;
 	for (int i = 0; i < flowList.size(); i++)
 	{
 		// Send ARP Reply packet to infect sender's ARP table
 		EthArpPacket pkt = EthArpPacket(ArpHdr::Reply, flowList[i].senderMac, flowList[i].attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, flowList[i].attackerMac, flowList[i].targetIp, flowList[i].senderMac, flowList[i].senderIp);
 		sendArp(handle, pkt);
 
-		std::thread spoofProcessThread(spoofProcess, ArpHdr::Reply, handle, pkt, flowList[i]);
-		// spoofProcess(ArpHdr::Reply, handle, pkt, flowList[i]);
-		// printf("here?\n");
-		if (true)
-		{
-			spoofProcessThread.join();
-		}
+		printf("sppofThread #%d start\n", i + 1);
+		spoofThreads.emplace_back(spoofProcess, ArpHdr::Reply, handle, pkt, flowList[i]);
+	}
+	for (auto &thread : spoofThreads)
+	{
+		thread.join();
 	}
 	pcap_close(handle);
 }

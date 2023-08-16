@@ -46,7 +46,7 @@ struct EthIpPacket final
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-struct FlowInfo final
+struct Flow final
 {
 	char *interfaceName;
 
@@ -64,7 +64,7 @@ struct FlowInfo final
 void sendArp(pcap_t *, EthArpPacket );
 void continueSendArp(pcap_t *, EthArpPacket , int );
 Mac getMac(pcap_t* , Ip , Mac , Ip );
-bool isRefreshed(pcap_t* , const u_char *, FlowInfo);
-void spoofProcess(int , pcap_t *, EthArpPacket, FlowInfo);
-void relayPacket(pcap_t *, const u_char *, FlowInfo);
-bool isInfectedPkt(pcap_t *, const u_char *, FlowInfo);
+bool isRefreshed(pcap_t* , const u_char *, Flow);
+void spoofProcess(int , pcap_t *, EthArpPacket, Flow);
+void relayPacket(pcap_t *, const u_char *, Flow);
+bool isInfectedPkt(pcap_t *, const u_char *, Flow);

@@ -2,7 +2,7 @@
 
 int main(int argc, char *argv[])
 {
-	FlowInfo flow;
+	Flow flow;
 
 	// parameter check
 	if (argc < 4 || (argc % 2) != 0)

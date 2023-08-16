@@ -66,7 +66,7 @@ void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat)
 	}
 }
 
-void relayPacket(pcap_t *handle, pcap_pkthdr *header, const u_char *receivedPkt, FlowInfo flow)
+void relayPacket(pcap_t *handle, pcap_pkthdr *header, const u_char *receivedPkt, Flow flow)
 {
 	EthIpPacket *packet = (EthIpPacket *)receivedPkt;
 	packet->eth_.smac_ = flow.attackerMac;
@@ -75,7 +75,7 @@ void relayPacket(pcap_t *handle, pcap_pkthdr *header, const u_char *receivedPkt,
 	sendIp(handle, receivedPkt, header->len);
 }
 
-bool isRefreshed(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)
+bool isRefreshed(pcap_t *handle, const u_char *receivedPkt, Flow flow)
 {
 	EthArpPacket *pkt = (EthArpPacket *)receivedPkt;
 	// case : broadcast (ARP)
@@ -109,7 +109,7 @@ bool isRefreshed(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)
 	return false;
 }
 
-bool isInfectedPkt(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)
+bool isInfectedPkt(pcap_t *handle, const u_char *receivedPkt, Flow flow)
 {
 	// Check that receivedPkt is from sender, and destination mac is attacker(me)
 	if ((ntohs(((EthIpPacket *)receivedPkt)->eth_.type_) == EthHdr::Ip4 || ntohs(((EthIpPacket *)receivedPkt)->eth_.type_) == EthHdr::Ip6) && ((EthIpPacket *)receivedPkt)->eth_.dmac_ == flow.attackerMac && ((EthIpPacket *)receivedPkt)->eth_.smac_ == flow.senderMac)
@@ -126,7 +126,7 @@ bool isInfectedPkt(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)
 	return false;
 }
 
-void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, FlowInfo flow)
+void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, Flow flow)
 {
 	struct pcap_pkthdr *header;
 	const u_char *receivedPkt;

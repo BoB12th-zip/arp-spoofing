@@ -7,6 +7,7 @@
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
 #include <thread>
+#include <vector>
 
 #include "spoof.h"
 #include "getHostInfo.h"

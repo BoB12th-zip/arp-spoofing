@@ -48,8 +48,6 @@ struct EthIpPacket final
 #pragma pack(push, 1)
 struct Flow final
 {
-	char *interfaceName;
-
 	Ip attackerIp = Ip();
 	Ip senderIp = Ip();
 	Ip targetIp = Ip();

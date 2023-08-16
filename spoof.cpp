@@ -71,8 +71,7 @@ void relayPacket(pcap_t *handle, pcap_pkthdr *header, const u_char *receivedPkt,
 	EthIpPacket *packet = (EthIpPacket *)receivedPkt;
 	packet->eth_.smac_ = flow.attackerMac;
 	packet->eth_.dmac_ = flow.targetMac;
-	//(const u_char *)packet
-	printf("%s | %s\n",std::string(packet->eth_.smac_).c_str(), std::string(packet->eth_.dmac_).c_str());
+	
 	sendIp(handle, receivedPkt, header->len);
 }
 

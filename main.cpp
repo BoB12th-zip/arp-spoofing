@@ -18,20 +18,16 @@ int main(int argc, char *argv[])
 		printf("[*] arp-spoof #%d..", iter / 2);
 		printf("\n----------------------------------------\n");
 
-		char *dev = argv[1];
-		const char *interfaceName = argv[1];
+		flow.interfaceName = argv[1];
 
-		// Ip attackerIp;
-		// Mac attackerMac;
-
-		getHostInfo(interfaceName, &flow.attackerIp, &flow.attackerMac);
+		getHostInfo(flow.interfaceName, &flow.attackerIp, &flow.attackerMac);
 
 		// Open pcap handle
 		char errbuf[PCAP_ERRBUF_SIZE];
-		pcap_t *handle = pcap_open_live(dev, BUFSIZ, 1, 1, errbuf);
+		pcap_t *handle = pcap_open_live(flow.interfaceName, BUFSIZ, 1, 1, errbuf);
 		if (handle == nullptr)
 		{
-			fprintf(stderr, "couldn't open device %s(%s)\n", dev, errbuf);
+			fprintf(stderr, "couldn't open device %s(%s)\n", flow.interfaceName, errbuf);
 			return -1;
 		}
 		printf("\n----------------------------------------\n");

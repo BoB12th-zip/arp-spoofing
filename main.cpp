@@ -33,10 +33,14 @@ int main(int argc, char *argv[])
 		printf("[*] arp-spoof #%d..", iter / 2);
 		printf("\n----------------------------------------\n");
 
+		printf("\n----------------------------------------\n");
+		printf("[*] get host info #%d..", iter / 2);
+		printf("\n----------------------------------------\n");
+		
 		getHostInfo(interfaceName, &flow.attackerIp, &flow.attackerMac);
 
 		printf("\n----------------------------------------\n");
-		printf("[*] get sender Info..");
+		printf("[*] get sender info..");
 		printf("\n----------------------------------------\n");
 
 		flow.senderIp = Ip(argv[iter]);
@@ -45,7 +49,7 @@ int main(int argc, char *argv[])
 		printf("[+] senderMac   : %s\n", std::string(flow.senderMac).c_str());
 
 		printf("\n----------------------------------------\n");
-		printf("[*] get target Info..");
+		printf("[*] get target info..");
 		printf("\n----------------------------------------\n");
 
 		flow.targetIp = Ip(argv[iter + 1]);
